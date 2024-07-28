@@ -28,17 +28,20 @@ const (
 	ASTERISK = "*"
 	SLASH    = "/"
 
-	LESSTHAN    = "<"
-	GREATERTHAN = ">"
+	LESS_THAN    = "<"
+	GREATER_THAN = ">"
+
+	EQUAL     = "=="
+	NOT_EQUAL = "!="
 
 	//Delimiters
 	COMMA     = ","
 	SEMICOLON = ";"
 
-	LPAREN = "("
-	RPAREN = ")"
-	LBRACE = "{"
-	RBRACE = "}"
+	LEFT_PAREN  = "("
+	RIGHT_PAREN = ")"
+	LEFT_BRACE  = "{"
+	RIGHT_BRACE = "}"
 
 	//Keywords
 	FUNCTION = "FUNCTION"

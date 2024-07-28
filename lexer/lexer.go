@@ -20,13 +20,17 @@ func New(input string) *Lexer {
 }
 
 func (l *Lexer) readChar() {
-	if l.nextPosition >= len(l.input) {
-		l.ch = 0 // ASCII code for NULL character and signifies eiter we haven't read anything yet or EOF
-	} else {
-		l.ch = l.input[l.nextPosition]
-	}
+	l.ch = l.peekChar()
 	l.position = l.nextPosition
 	l.nextPosition += 1
+}
+
+func (l *Lexer) peekChar() byte {
+	if l.nextPosition >= len(l.input) {
+		return 0
+	} else {
+		return l.input[l.nextPosition]
+	}
 }
 
 func newToken(tokenType token.TokenType, ch byte) token.Token {
@@ -71,13 +75,20 @@ func (l *Lexer) NextToken() token.Token {
 
 	switch l.ch {
 	case '=':
-		tok = newToken(token.ASSIGN, l.ch)
+		if l.peekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			literal := string(ch) + string(l.ch)
+			tok = token.Token{Type: token.EQUAL, Literal: literal}
+		} else {
+			tok = newToken(token.ASSIGN, l.ch)
+		}
 	case ';':
 		tok = newToken(token.SEMICOLON, l.ch)
 	case '(':
-		tok = newToken(token.LPAREN, l.ch)
+		tok = newToken(token.LEFT_PAREN, l.ch)
 	case ')':
-		tok = newToken(token.RPAREN, l.ch)
+		tok = newToken(token.RIGHT_PAREN, l.ch)
 	case ',':
 		tok = newToken(token.COMMA, l.ch)
 	case '+':
@@ -85,19 +96,26 @@ func (l *Lexer) NextToken() token.Token {
 	case '-':
 		tok = newToken(token.MINUS, l.ch)
 	case '!':
-		tok = newToken(token.BANG, l.ch)
+		if l.peekChar() == '=' {
+			ch := l.ch
+			l.readChar()
+			literal := string(ch) + string(l.ch)
+			tok = token.Token{Type: token.NOT_EQUAL, Literal: literal}
+		} else {
+			tok = newToken(token.BANG, l.ch)
+		}
 	case '/':
 		tok = newToken(token.SLASH, l.ch)
 	case '*':
 		tok = newToken(token.ASTERISK, l.ch)
 	case '<':
-		tok = newToken(token.LESSTHAN, l.ch)
+		tok = newToken(token.LESS_THAN, l.ch)
 	case '>':
-		tok = newToken(token.GREATERTHAN, l.ch)
+		tok = newToken(token.GREATER_THAN, l.ch)
 	case '{':
-		tok = newToken(token.LBRACE, l.ch)
+		tok = newToken(token.LEFT_BRACE, l.ch)
 	case '}':
-		tok = newToken(token.RBRACE, l.ch)
+		tok = newToken(token.RIGHT_BRACE, l.ch)
 	case 0:
 		tok.Literal = ""
 		tok.Type = token.EOF
