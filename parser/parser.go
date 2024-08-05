@@ -16,6 +16,22 @@ type Parser struct {
 
 	curToken  token.Token
 	peekToken token.Token
+
+	prefixParserFns map[token.TokenType]prefixParserFn
+	infixParserFns  map[token.TokenType]infixParserFn
+}
+
+type (
+	prefixParserFn func() ast.Expression
+	infixParserFn  func(ast.Expression) ast.Expression
+)
+
+func (p *Parser) registerPrefix(tokenType token.TokenType, fn prefixParserFn) {
+	p.prefixParserFns[tokenType] = fn
+}
+
+func (p *Parser) registerInfix(tokenType token.TokenType, fn infixParserFn) {
+	p.infixParserFns[tokenType] = fn
 }
 
 func (p *Parser) nextToken() {
