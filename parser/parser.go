@@ -21,6 +21,17 @@ const (
 	CALL
 )
 
+var precedences = map[token.TokenType]int{
+	token.EQUAL:        EQUALS,
+	token.NOT_EQUAL:    EQUALS,
+	token.LESS_THAN:    LESSGREATER,
+	token.GREATER_THAN: LESSGREATER,
+	token.PLUS:         SUM,
+	token.MINUS:        SUM,
+	token.SLASH:        PRODUCT,
+	token.ASTERISK:     PRODUCT,
+}
+
 type Parser struct {
 	l *lexer.Lexer
 
@@ -55,7 +66,7 @@ func (p *Parser) Errors() []string {
 	return p.errors
 }
 
-func (p *Parser) peerError(t token.TokenType) {
+func (p *Parser) peekError(t token.TokenType) {
 	msg := fmt.Sprintf("expected next token to be %s, got %s instead",
 		t, p.peekToken.Type)
 
@@ -76,7 +87,7 @@ func (p *Parser) expectPeek(t token.TokenType) bool {
 		p.nextToken()
 		return true
 	} else {
-		p.peerError(t)
+		p.peekError(t)
 		return false
 	}
 }
@@ -127,8 +138,24 @@ func (p *Parser) parseExpression(precedence int) ast.Expression {
 		p.noPrefixParseFnError(p.curToken.Type)
 		return nil
 	}
+
 	leftExp := prefix()
+
+	for !p.peekTokenIs(token.SEMICOLON) && precedence < p.peekPrecedence() {
+
+		infix := p.infixParserFns[p.peekToken.Type]
+
+		if infix == nil {
+			return leftExp
+		}
+
+		p.nextToken()
+		leftExp = infix(leftExp)
+
+	}
+
 	return leftExp
+
 }
 
 func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
@@ -173,6 +200,22 @@ func (p *Parser) ParseProgram() *ast.Program {
 	return program
 }
 
+func (p *Parser) peekPrecedence() int {
+	if p, ok := precedences[p.peekToken.Type]; ok {
+		return p
+	}
+
+	return LOWEST
+}
+
+func (p *Parser) curPrecedence() int {
+	if p, ok := precedences[p.curToken.Type]; ok {
+		return p
+	}
+
+	return LOWEST
+}
+
 func (p *Parser) parseIntegerLiteral() ast.Expression {
 
 	lit := &ast.IntegerLiteral{Token: p.curToken}
@@ -198,21 +241,48 @@ func (p *Parser) parsePrefixExpression() ast.Expression {
 	return expression
 }
 
+func (p *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+	expression := &ast.InfixExpression{
+		Token:    p.curToken,
+		Operator: p.curToken.Literal,
+		Left:     left,
+	}
+
+	precedence := p.curPrecedence()
+	p.nextToken()
+
+	expression.Right = p.parseExpression(precedence)
+
+	return expression
+
+}
+
 func New(l *lexer.Lexer) *Parser {
 	p := &Parser{
 		l: l,
 
 		errors: []string{},
 	}
-	//	Read two tokens , so curToken and peekToken are both set
-
-	p.nextToken()
-	p.nextToken()
 
 	p.prefixParserFns = make(map[token.TokenType]prefixParserFn)
 	p.registerPrefix(token.IDENT, p.parseIdentifier)
 	p.registerPrefix(token.INT, p.parseIntegerLiteral)
 	p.registerPrefix(token.BANG, p.parsePrefixExpression)
 	p.registerPrefix(token.MINUS, p.parsePrefixExpression)
+
+	p.infixParserFns = make(map[token.TokenType]infixParserFn)
+	p.registerInfix(token.PLUS, p.parseInfixExpression)
+	p.registerInfix(token.MINUS, p.parseInfixExpression)
+	p.registerInfix(token.SLASH, p.parseInfixExpression)
+	p.registerInfix(token.ASTERISK, p.parseInfixExpression)
+	p.registerInfix(token.EQUAL, p.parseInfixExpression)
+	p.registerInfix(token.NOT_EQUAL, p.parseInfixExpression)
+	p.registerInfix(token.LESS_THAN, p.parseInfixExpression)
+	p.registerInfix(token.GREATER_THAN, p.parseInfixExpression)
+
+	// Read two tokens, so currentToken and peekToken are both set
+	p.nextToken()
+	p.nextToken()
+
 	return p
 }
